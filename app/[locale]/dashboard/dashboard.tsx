@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSelectedLayoutSegment } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -14,6 +14,7 @@ import {
 import {
   Article,
   ArrowClockwise,
+  ArrowRight,
   ArrowSquareOut,
   BookOpen,
   CaretDown,
@@ -41,49 +42,61 @@ import {
 } from "@phosphor-icons/react";
 import { readDemoAccount, saveDemoAccount } from "../../demo-account";
 import { toggleTheme } from "../../theme";
+import { DashboardGuide, PageHint } from "./dashboard-guide";
 import {
-  DashboardGuide,
-  PageHint,
-  QuickActions,
+  LatestIssue,
   RunStatistics,
   RunStatusChart,
 } from "./dashboard-overview";
 import {
-  createDemoRun,
-  demoControlTime,
-  demoDataset,
-  demoRecipient,
-  exampleArticles,
-  getArtifacts,
+  addArticle,
+  checkSend,
+  createRun,
+  exportUrl,
   getPeriod,
-  getRunReport,
-  issueNote,
-  maxEvents,
-  renderPost,
+  getRunStatus,
+  lastRunKey,
+  loadRun,
+  sampleControlTime,
+  sampleDataset,
+  uploadLimit,
   type ArticleDraft,
-  type DemoRun,
+  type DigestRun,
+  type RunStatus,
   type Status,
-} from "./demo";
-import {
-  dashboardSections,
-  pageHints,
-  type DashboardSection,
-} from "./sections";
+} from "./digest-api";
+import { dashboardSections, type DashboardSection } from "./sections";
 
-const results = [
+const materials = [
   { id: "digest", icon: Article },
   { id: "post", icon: FileText },
   { id: "email", icon: EnvelopeSimple },
+] as const;
+const review = [
   { id: "journal", icon: ListChecks },
   { id: "report", icon: ShieldCheck },
 ] as const;
-
-const stages = [
-  "Загрузка и период",
-  "Отбор и объединение",
-  "Сверка фактов",
-  "Подготовка файлов",
+const resultGroups = [
+  { label: "Материалы выпуска", items: materials },
+  { label: "Проверка обработки", items: review },
 ];
+
+type ResultSection = (typeof materials | typeof review)[number]["id"];
+
+const stageLabels: Record<string, string> = {
+  load: "Загрузка публикаций",
+  normalize: "Нормализация",
+  period: "Проверка периода",
+  guard: "Проверка входных данных",
+  topic: "Отбор по теме",
+  extract: "Извлечение фактов",
+  cluster: "Объединение публикаций",
+  rank: "Ранжирование",
+  select: "Отбор событий",
+  summarize: "Подготовка текстов",
+  verify: "Сверка фактов",
+  write: "Запись файлов",
+};
 const statuses: Status[] = ["включён", "объединён", "исключён"];
 const statusClasses: Record<Status, string> = {
   включён: "included",
@@ -91,21 +104,6 @@ const statusClasses: Record<Status, string> = {
   исключён: "excluded",
 };
 type DialogKind = "export" | "send" | "article";
-
-function downloadFile({
-  name,
-  type,
-  value,
-}: ReturnType<typeof getArtifacts>[number]) {
-  const url = URL.createObjectURL(
-    new Blob([value], { type: type + ";charset=utf-8" }),
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function Dialog({
   title,
@@ -143,54 +141,50 @@ function Dialog({
   );
 }
 
-function RunProgress({ stage, running }: { stage: number; running: boolean }) {
-  const percent = Math.round((stage / stages.length) * 100);
+function RunProgress({ status }: { status: RunStatus | null }) {
+  const stages = status?.stages ?? [];
+  const current = stages.at(-1);
   return (
-    <section
-      className="dash-panel dash-progress"
-      aria-labelledby="dash-progress-title"
-    >
+    <section className="dash-panel dash-progress" aria-labelledby="dash-progress-title">
       <div className="dash-panel-head">
         <h2 id="dash-progress-title">
           <Clock size={17} aria-hidden="true" /> Ход обработки
         </h2>
-        <span className="dash-progress-number">{percent}%</span>
       </div>
       <progress
-        value={stage}
-        max={stages.length}
-        aria-label="Ход демонстрационного прогона"
+        value={status?.status === "done" ? 1 : current?.total ? current.done : undefined}
+        max={status?.status === "done" ? 1 : current?.total || 1}
+        aria-label="Ход текущего этапа"
       />
       <ol>
-        {stages.map((label, index) => (
-          <li
-            key={label}
-            data-stage={
-              index < stage ? "done" : index === stage ? "active" : "waiting"
-            }
-          >
-            <span className="dash-stage-mark" aria-hidden="true">
-              {index < stage ? <Check size={12} weight="bold" /> : index + 1}
-            </span>
-            <span>{label}</span>
-            <small>
-              {index < stage
-                ? "Готово"
-                : index === stage && running
-                  ? "В работе"
-                  : "Ожидает"}
-            </small>
-          </li>
-        ))}
+        {stages.map(({ name, done, total }, index) => {
+          const finished = index < stages.length - 1 || status?.status === "done" || (total > 0 && done >= total);
+          return (
+            <li key={name} data-stage={finished ? "done" : "active"}>
+              <span className="dash-stage-mark" aria-hidden="true">
+                {finished ? <Check size={12} weight="bold" /> : index + 1}
+              </span>
+              <span>{stageLabels[name] ?? name}</span>
+              <small>{total ? done + " / " + total : finished ? "Готово" : "В работе"}</small>
+            </li>
+          );
+        })}
       </ol>
       <p className="dash-progress-foot" role="status">
-        {running ? "Идёт демонстрационный прогон" : "Демопрогон завершён"}
+        {status?.status === "done" ? "Загружаем результаты…" : current ? "Идёт обработка публикаций" : "Ожидаем ответ сервера…"}
       </p>
     </section>
   );
 }
 
-function EventList({ run }: { run: DemoRun }) {
+function sourceLink(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+  } catch {}
+}
+
+function EventList({ run }: { run: DigestRun }) {
   return (
     <ol className="dash-events">
       {run.events.map((event) => (
@@ -215,14 +209,14 @@ function EventList({ run }: { run: DemoRun }) {
             <div className="dash-sources" aria-label="Источники">
               {event.sources.map((source) => (
                 <a
-                  href={source.url}
+                  href={sourceLink(source.url)}
                   key={source.id}
                   target="_blank"
                   rel="noreferrer"
                 >
                   <ArrowSquareOut size={13} aria-hidden="true" /> {source.name}
                   <small>
-                    {source.date} · {source.id}
+                    {[source.date, source.role, source.id].filter(Boolean).join(" · ")}
                   </small>
                 </a>
               ))}
@@ -234,14 +228,15 @@ function EventList({ run }: { run: DemoRun }) {
   );
 }
 
-function Journal({ run }: { run: DemoRun }) {
+function Journal({ run }: { run: DigestRun }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
+  const search = useRef<HTMLInputElement>(null);
   const term = query.trim().toLowerCase();
   const rows = run.journal.filter(
     (row) =>
       (!status || row.status === status) &&
-      [row.id, row.title, row.group, row.reason].some((field) =>
+      [row.id, row.source, row.group, row.reason].some((field) =>
         field.toLowerCase().includes(term),
       ),
   );
@@ -254,17 +249,15 @@ function Journal({ run }: { run: DemoRun }) {
           <p>
             {rows.length} из {run.journal.length} публикаций
           </p>
-          <p className="dash-table-note">
-            Прокрутите таблицу вправо, чтобы увидеть причины и ошибки.
-          </p>
         </div>
         <div className="dash-journal-controls">
           <label className="dash-search">
             <MagnifyingGlass size={16} aria-hidden="true" />
             <input
+              ref={search}
               type="search"
               aria-label="Поиск в журнале"
-              placeholder="Поиск по ID или группе"
+              placeholder="Источник, ID или причина"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -283,63 +276,87 @@ function Journal({ run }: { run: DemoRun }) {
         </div>
       </div>
       {rows.length ? (
-        <div
-          className="dash-table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Таблица журнала"
-        >
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th scope="col">Материал</th>
-                <th scope="col">Статус</th>
-                <th scope="col">Группа</th>
-                <th scope="col">Причина</th>
-                <th scope="col">Ошибка</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">
-                    <small>{row.id}</small>
-                    {row.title}
-                  </th>
-                  <td>
-                    <span
-                      className={"dash-status " + statusClasses[row.status]}
-                    >
-                      {row.status}
-                    </span>
-                  </td>
-                  <td>{row.group || "–"}</td>
-                  <td>{row.reason}</td>
-                  <td>{row.error || "–"}</td>
+        <>
+          <div
+            className="dash-table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Таблица журнала"
+          >
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th scope="col">Материал</th>
+                  <th scope="col">Статус</th>
+                  <th scope="col">Группа</th>
+                  <th scope="col">Причина</th>
+                  <th scope="col">Ошибка</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={row.id + "-" + row.published_at_msk + "-" + index}>
+                    <th scope="row">
+                      <small>{row.id}</small>
+                      {row.source || "Источник не указан"}
+                      {row.published_at_msk && <small>{row.published_at_msk}</small>}
+                    </th>
+                    <td>
+                      <span
+                        className={"dash-status " + statusClasses[row.status]}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td>{row.group || "–"}</td>
+                    <td>{row.reason}</td>
+                    <td>{row.error || "–"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ul className="dash-journal-list" aria-label="Публикации в журнале">
+            {rows.map((row, index) => (
+              <li key={row.id + "-" + row.published_at_msk + "-" + index}>
+                <div className="dash-panel-head">
+                  <strong>{row.source || "Источник не указан"}</strong>
+                  <span className={"dash-status " + statusClasses[row.status]}>{row.status}</span>
+                </div>
+                <small>{[row.id, row.published_at_msk].filter(Boolean).join(" · ")}</small>
+                <p>{row.reason}</p>
+                {row.group && <small>Группа {row.group}</small>}
+                {row.error && <p className="dash-error">Ошибка: {row.error}</p>}
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
-        <p className="dash-empty" role="status">
-          По этим фильтрам публикаций нет.
-        </p>
+        <div className="dash-empty-actions">
+          <p role="status">{run.journal.length ? "По этим фильтрам публикаций нет." : "В журнале пока нет публикаций."}</p>
+          {run.journal.length > 0 && (
+            <button type="button" className="dash-button" onClick={() => {
+              setQuery("");
+              setStatus("");
+              search.current?.focus();
+            }}>Сбросить фильтры</button>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function PostPreview({ run }: { run: DemoRun }) {
+function PostPreview({ run }: { run: DigestRun }) {
   const [notice, setNotice] = useState("");
-  const post = renderPost(run);
+  const post = run.post;
   const count = Array.from(post.replace(/https?:\/\/[^\s;]+/g, "")).length;
   async function copyPost() {
     try {
       await navigator.clipboard.writeText(post);
       setNotice("Пост скопирован");
     } catch {
-      setNotice("Воспользуйтесь выгрузкой post.txt");
+      setNotice("Скачайте материалы и откройте post.txt из архива.");
     }
   }
 
@@ -364,77 +381,101 @@ function PostPreview({ run }: { run: DemoRun }) {
   );
 }
 
-function RunReport({ run }: { run: DemoRun }) {
-  const report = getRunReport(run);
+function RunReport({ run }: { run: DigestRun }) {
+  const { report } = run;
+  const verification = report.verify.degraded
+    ? "Результат требует внимания"
+    : run.events.length ? "Проверка завершена" : "Нет событий для сверки";
   return (
     <>
       <div className="dash-result-heading">
         <h2>Отчёт о запуске</h2>
-        <p>Параметры текущего демонстрационного выпуска</p>
+        <p>Сводка по последнему завершённому выпуску</p>
       </div>
       <dl className="dash-report">
         <div>
-          <dt>Выбранный файл</dt>
-          <dd>{report.selected_file}</dd>
+          <dt>Публикаций обработано</dt>
+          <dd>{report.counts.total}</dd>
         </div>
         <div>
-          <dt>Данные выпуска</dt>
-          <dd>{report.dataset}</dd>
+          <dt>Событий в выпуске</dt>
+          <dd>{report.counts.events}</dd>
         </div>
         <div>
-          <dt>Период</dt>
-          <dd>{run.period.label}</dd>
+          <dt>Время обработки</dt>
+          <dd>{(report.duration_ms / 1000).toLocaleString("ru-RU")} с</dd>
         </div>
         <div>
-          <dt>Материалов / событий</dt>
-          <dd>
-            {report.articles} / {report.events}
-          </dd>
-        </div>
-        <div>
-          <dt>Модель и версия промптов</dt>
-          <dd>Недоступны в деморежиме</dd>
-        </div>
-        <div>
-          <dt>Обращений к модели</dt>
-          <dd>{report.llm_calls}</dd>
-        </div>
-        <div>
-          <dt>Токены и стоимость</dt>
-          <dd>Недоступны в деморежиме</dd>
+          <dt>Сверка фактов</dt>
+          <dd>{verification}</dd>
+          {report.verify.findings.length > 0 && (
+            <dd>
+              <ul>{report.verify.findings.map((finding, index) => <li key={index}>{finding.message}</li>)}</ul>
+            </dd>
+          )}
         </div>
       </dl>
       <div className="dash-report-stats">
         <RunStatusChart run={run} />
       </div>
+      <details className="dash-report-details">
+        <summary>
+          <CaretDown size={14} aria-hidden="true" /> Технические сведения
+        </summary>
+        <dl className="dash-report">
+          <div>
+            <dt>ID запуска</dt>
+            <dd>{run.id}</dd>
+          </div>
+          <div>
+            <dt>Модель и версия промптов</dt>
+            <dd>{report.llm.provider === "mock" ? "Тестовый режим" : report.llm.model || report.llm.provider || "—"} · {report.prompts_hash.slice(0, 12) || "—"}</dd>
+          </div>
+          <div>
+            <dt>Обращений к модели</dt>
+            <dd>{report.llm.calls_total}</dd>
+          </div>
+          <div>
+            <dt>Токены и стоимость</dt>
+            <dd>{report.llm.input_tokens + report.llm.output_tokens} / {report.llm.cost ?? "не указана"}</dd>
+          </div>
+        </dl>
+      </details>
     </>
   );
 }
 
-function SendForm() {
-  const [value, setValue] = useState(demoRecipient);
+function SendForm({ runId }: { runId: string }) {
+  const [value, setValue] = useState("");
   const [feedback, setFeedback] = useState("");
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const recipients = new Set(
-      value
-        .trim()
-        .toLowerCase()
-        .split(/[\s,;]+/)
-        .filter(Boolean),
-    );
-    setFeedback(
-      recipients.size === 1 && recipients.has(demoRecipient)
-        ? "Проверка прошла. Демоотправка завершена без доставки письма."
-        : "В деморежиме доступен тестовый адрес " + demoRecipient + ".",
-    );
+    if (sending) return;
+    const recipients = value.trim().split(/[\s,;]+/).filter(Boolean);
+    if (!recipients.length) {
+      setError("Укажите тестовый адрес.");
+      return;
+    }
+
+    setSending(true);
+    setFeedback("");
+    setError("");
+    try {
+      const result = await checkSend(runId, recipients);
+      setFeedback("Проверка прошла. Получатели: " + result.recipients.join(", ") + ". Письмо не доставлялось.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Не удалось проверить отправку.");
+    } finally {
+      setSending(false);
+    }
   }
+
   return (
     <form className="dash-dialog-form" onSubmit={submit}>
-      <p>
-        Доступен пробный прогон рассылки на адрес {demoRecipient}. Письмо будет
-        доступно во вкладке «Письмо».
-      </p>
+      <p>Укажите адрес из списка тестовых получателей, настроенного на сервере. Проверка проходит без доставки письма.</p>
       <label>
         Тестовые получатели
         <input
@@ -443,34 +484,34 @@ function SendForm() {
           onChange={(event) => {
             setValue(event.target.value);
             setFeedback("");
+            setError("");
           }}
+          placeholder="test@example.com"
+          disabled={sending}
           required
         />
       </label>
-      {feedback && (
-        <p className="dash-feedback" role="status">
-          {feedback}
-        </p>
-      )}
-      <button type="submit" className="dash-button dash-button-primary">
-        <PaperPlaneTilt size={16} /> Проверить отправку
+      {feedback && <p className="dash-feedback" role="status">{feedback}</p>}
+      {error && <p className="dash-error" role="alert">{error}</p>}
+      <button type="submit" className="dash-button dash-button-primary" disabled={sending}>
+        <PaperPlaneTilt size={16} /> {sending ? "Проверяем…" : "Проверить отправку"}
       </button>
     </form>
   );
 }
 
 function ArticleForm({
-  controlTime,
+  run,
   onSubmit,
 }: {
-  controlTime: string;
+  run: DigestRun;
   onSubmit: (article: ArticleDraft) => void;
 }) {
   const [draft, setDraft] = useState<ArticleDraft>({
     title: "",
     source: "",
     url: "",
-    publishedAt: controlTime,
+    publishedAt: run.controlTime,
     text: "",
   });
   function field(name: keyof ArticleDraft, value: string) {
@@ -484,33 +525,7 @@ function ArticleForm({
         onSubmit(draft);
       }}
     >
-      <p>
-        Готовые примеры показывают склейку дубля и запись о посторонней
-        инструкции в журнале.
-      </p>
-      <div className="dash-inline">
-        <button
-          type="button"
-          className="dash-button"
-          onClick={() =>
-            setDraft({ ...exampleArticles.duplicate, publishedAt: controlTime })
-          }
-        >
-          Подставить дубль
-        </button>
-        <button
-          type="button"
-          className="dash-button"
-          onClick={() =>
-            setDraft({
-              ...exampleArticles.instruction,
-              publishedAt: controlTime,
-            })
-          }
-        >
-          Подставить инструкцию
-        </button>
-      </div>
+      <p>Добавляем публикацию к выпуску из набора <strong>{run.dataset}</strong> за {run.period}. MONO заново обработает этот набор с новой публикацией.</p>
       <label>
         Заголовок
         <input
@@ -568,91 +583,114 @@ function ArticleForm({
 }
 
 function useWorkspace(baseHref: string) {
-  const router = useRouter();
-  const [controlTime, setControlTime] = useState(demoControlTime);
-  const [datasetName, setDatasetName] = useState(demoDataset);
+  const [controlTime, setControlTime] = useState(sampleControlTime);
+  const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
-  const [run, setRun] = useState(() =>
-    createDemoRun(demoControlTime, demoDataset),
-  );
-  const [pending, setPending] = useState<DemoRun | null>(null);
-  const [stage, setStage] = useState(stages.length);
+  const [runError, setRunError] = useState("");
+  const [run, setRun] = useState<DigestRun | null>(null);
+  const [status, setStatus] = useState<RunStatus | null>(null);
+  const [running, setRunning] = useState(false);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const upload = useRef<HTMLInputElement>(null);
+  const activeRequest = useRef<AbortController | null>(null);
   const period = getPeriod(controlTime);
-  const running = pending !== null;
 
   useEffect(() => {
-    if (!pending) return;
-    let current = 0;
-    const timer = window.setInterval(() => {
-      current += 1;
-      setStage(current);
-      if (current === stages.length) {
-        window.clearInterval(timer);
-        setRun(pending);
-        setPending(null);
-      }
-    }, 460);
-    return () => window.clearInterval(timer);
-  }, [pending]);
+    const controller = new AbortController();
+    const { signal } = controller;
+    let id: string | null = null;
+    try {
+      id = sessionStorage.getItem(lastRunKey);
+    } catch {}
 
-  function start(article?: ArticleDraft) {
-    if (!period || !datasetName || running) return;
-    const additions =
-      run.datasetName === datasetName && run.controlTime === controlTime
-        ? run.additions
-        : [];
-    setStage(0);
+    if (id) {
+      activeRequest.current = controller;
+      setRunning(true);
+      getRunStatus(id, signal)
+        .then(status => {
+          if (status.status !== "done") throw new Error("Результаты прогона недоступны.");
+          return loadRun(status, signal);
+        })
+        .then(result => {
+          if (signal.aborted) return;
+          setRun(result);
+        })
+        .catch(error => {
+          if (!signal.aborted) setRunError(error.message);
+        })
+        .finally(() => {
+          if (signal.aborted) return;
+          activeRequest.current = null;
+          setRunning(false);
+        });
+    }
+
+    return () => activeRequest.current?.abort();
+  }, []);
+
+  async function start(article?: ArticleDraft) {
+    if (activeRequest.current || (article ? !run : !period || fileError)) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    const { signal } = controller;
+    setRunning(true);
+    setRunError("");
+    setStatus(null);
     setDialog(null);
-    setPending(
-      createDemoRun(
-        controlTime,
-        datasetName,
-        article ? [...additions, article] : additions,
-      ),
-    );
-    if (article) router.push(baseHref + "/journal");
+    try {
+      const started = article && run
+        ? await addArticle(run.id, article, signal)
+        : await createRun(controlTime, file, signal);
+      let current = await getRunStatus(started.run_id, signal);
+      while (current.status === "running") {
+        setStatus(current);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        signal.throwIfAborted();
+        current = await getRunStatus(started.run_id, signal);
+      }
+      if (current.status === "failed") {
+        throw new Error(current.error || "Прогон завершился с ошибкой.");
+      }
+      setStatus(current);
+      const result = await loadRun(current, signal);
+      setRun(result);
+      try {
+        sessionStorage.setItem(lastRunKey, result.id);
+      } catch {}
+    } catch (error) {
+      if (!signal.aborted) {
+        setRunError(error instanceof Error ? error.message : "Не удалось обработать публикации.");
+      }
+    } finally {
+      if (!signal.aborted) {
+        activeRequest.current = null;
+        setRunning(false);
+      }
+    }
   }
 
-  function selectDataset(file?: File) {
-    if (!file) return;
-    if (!/\.(jsonl?|csv)$/i.test(file.name) || !file.size) {
-      setDatasetName("");
-      setFileError(
-        file.size
-          ? "Выберите JSON, JSONL или CSV."
-          : "Файл пуст. Выберите другой набор.",
-      );
+  function selectDataset(next?: File) {
+    if (!next) return;
+    if (!/\.(jsonl?|csv)$/i.test(next.name) || !next.size || next.size > uploadLimit) {
+      setFile(null);
+      setFileError("Выберите непустой файл JSON, JSONL или CSV до 8 МБ.");
       if (upload.current) upload.current.value = "";
       return;
     }
     setFileError("");
-    setDatasetName(file.name);
+    setFile(next);
   }
 
   function resetDataset() {
     if (upload.current) upload.current.value = "";
     setFileError("");
-    setDatasetName(demoDataset);
+    setFile(null);
+    setControlTime(sampleControlTime);
   }
 
   return {
-    baseHref,
-    controlTime,
-    setControlTime,
-    datasetName,
-    fileError,
-    run,
-    stage,
-    running,
-    period,
-    upload,
-    start,
-    selectDataset,
-    resetDataset,
-    dialog,
-    setDialog,
+    baseHref, controlTime, setControlTime, file, fileError, runError, run, status,
+    running, period, upload, start, selectDataset, resetDataset, dialog, setDialog,
   };
 }
 
@@ -809,25 +847,23 @@ function Profile() {
 }
 
 function Launch({
+  baseHref,
   controlTime,
   setControlTime,
-  datasetName,
+  file,
   fileError,
-  stage,
+  status,
   running,
   period,
   upload,
   start,
   selectDataset,
   resetDataset,
-  setDialog,
 }: Workspace) {
   return (
     <div className="dash-setup" id="run-settings" tabIndex={-1}>
       <section className="dash-panel dash-run" aria-labelledby="dash-run-title">
-        <div className="dash-panel-head">
-          <span className="dash-tag">До {maxEvents} событий</span>
-        </div>
+        <h2 id="dash-run-title">Новый выпуск</h2>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -840,8 +876,8 @@ function Launch({
               <label className="dash-upload">
                 <CloudArrowUp size={20} aria-hidden="true" />
                 <span>
-                  <strong>{datasetName || "Выбрать файл"}</strong>
-                  <small>JSON, JSONL или CSV</small>
+                  <strong>{file?.name ?? "Учебный набор"}</strong>
+                  <small>{file ? "Нажмите, чтобы заменить файл" : sampleDataset + " · можно загрузить свой файл"}</small>
                 </span>
                 <input
                   ref={upload}
@@ -852,14 +888,18 @@ function Launch({
                   onChange={(event) => selectDataset(event.target.files?.[0])}
                 />
               </label>
+              <Link className="dash-inline-link dash-format-link" href={baseHref + "/guide#own-data"}>
+                Формат файла и пример
+              </Link>
             </div>
             <label className="dash-field">
               <span>
-                Контрольное время <small>МСК</small>
+                Конец периода <small>МСК</small>
               </span>
               <input
                 className="dash-input"
                 type="datetime-local"
+                aria-describedby="dash-period-note"
                 required
                 disabled={running}
                 value={controlTime}
@@ -874,64 +914,67 @@ function Launch({
           )}
           <p className="dash-period-label">
             <Clock size={14} aria-hidden="true" />{" "}
-            {period?.label ?? "Укажите контрольное время"}
+            {period ? "Период: " + period : "Укажите конец периода"}
+          </p>
+          <p className="dash-run-note" id="dash-period-note">
+            В выпуск попадут подходящие публикации за 24 часа до выбранного времени.
           </p>
           <div className="dash-run-actions">
             <button
               type="submit"
               className="dash-button dash-button-primary"
-              disabled={running || !datasetName || !period}
+              disabled={running || !!fileError || !period}
             >
               <Play size={16} weight="fill" />{" "}
-              {running ? "Выполняется…" : "Запустить"}
+              {running ? "Обработка…" : "Собрать дайджест"}
             </button>
-            <button
-              type="button"
-              className="dash-button"
-              disabled={running || !datasetName || !period}
-              onClick={() => setDialog("article")}
-            >
-              <Plus size={17} /> Добавить публикацию
-            </button>
-            {datasetName !== demoDataset && (
+            {(file || fileError || controlTime !== sampleControlTime) && (
               <button
                 type="button"
                 className="dash-text-button"
                 disabled={running}
                 onClick={resetDataset}
               >
-                Выбрать демонабор
+                Вернуть учебный набор
               </button>
             )}
+            <Link className="dash-text-button" href={baseHref + "/guide#first-run"}>Как запустить</Link>
           </div>
-          <p className="dash-run-note">
-            Демопрогон использует вымышленные публикации. Для выбранного файла
-            сохраняется только имя.
-          </p>
         </form>
       </section>
-      <RunProgress stage={stage} running={running} />
+      {running && <RunProgress status={status} />}
     </div>
   );
 }
 
-type ResultSection = (typeof results)[number]["id"];
-
-function Result({ section, run }: { section: ResultSection; run: DemoRun }) {
+function Result({ section, run, baseHref }: { section: ResultSection; run: DigestRun; baseHref: string }) {
   switch (section) {
     case "digest":
-      return (
+      return run.events.length ? (
         <>
-          <div className="dash-panel-head dash-result-heading">
-            <div>
-              <h2>Дайджест по кибербезопасности</h2>
-              <p>{run.period.label}</p>
-            </div>
-            <span className="dash-tag">Демонстрационный выпуск</span>
+          <div className="dash-result-heading">
+            <h2>События выпуска</h2>
+            {run.shortfall && <p>{run.shortfall}</p>}
           </div>
-          <p className="dash-issue-note">{issueNote(run)}</p>
           <EventList run={run} />
+          <div className="dash-inline dash-result-next">
+            <Link href={baseHref + "/journal"} className="dash-button">Журнал обработки</Link>
+            <Link href={baseHref + "/post"} className="dash-button">Открыть пост <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link href={baseHref + "/email"} className="dash-button">Открыть письмо <ArrowRight size={15} aria-hidden="true" /></Link>
+          </div>
         </>
+      ) : (
+        <div className="dash-empty-actions">
+          <h2>В выпуске нет событий</h2>
+          <p>MONO обработал набор, но подходящих событий за выбранный период не осталось. Причина по каждой публикации указана в журнале.</p>
+          {run.report.llm.provider === "mock" && (
+            <p>Этот выпуск собран в тестовом режиме. Его можно использовать, чтобы проверить работу интерфейса, журнала и выгрузки.</p>
+          )}
+          <div className="dash-inline">
+            <Link className="dash-button dash-button-primary" href={baseHref + "/journal"}>Посмотреть причины в журнале</Link>
+            <Link className="dash-button" href={baseHref + "#run-settings"}>Изменить набор или период</Link>
+          </div>
+        </div>
       );
     case "post":
       return <PostPreview run={run} />;
@@ -945,11 +988,12 @@ function Result({ section, run }: { section: ResultSection; run: DemoRun }) {
           <div className="dash-email">
             <div className="dash-email-subject">
               <small>Тема письма</small>
-              <h3>Дайджест по кибербезопасности</h3>
-              <p>{run.period.label}</p>
+              <h3>{run.letter.subject}</h3>
+              <p>{run.period}</p>
             </div>
-            <p className="dash-issue-note">{issueNote(run)}</p>
-            <EventList run={run} />
+            {run.letter.html ? (
+              <iframe title="Письмо дайджеста" sandbox="" srcDoc={run.letter.html} />
+            ) : <pre className="dash-post">{run.letter.text}</pre>}
           </div>
         </>
       );
@@ -966,70 +1010,97 @@ export function WorkspacePage({
   section: DashboardSection | "setup";
 }) {
   const workspace = useContext(WorkspaceContext);
+  const heading = useRef<HTMLHeadingElement>(null);
   if (!workspace)
     throw new Error("WorkspacePage requires the dashboard layout");
-  const { run, running, stage, baseHref, setDialog } = workspace;
+  const { run, runError, running, status, baseHref, setDialog } = workspace;
   const isHome = section === "setup";
   const isResult =
     section !== "setup" && section !== "profile" && section !== "guide";
+  const showHint = section === "setup"
+    ? !run && !running
+    : section === "profile" || (isResult && run && !running && (section !== "digest" || run.events.length > 0));
 
   return (
     <>
       <div className="dash-title">
         <div>
-          <h1>{isHome ? "Главное" : dashboardSections[section]}</h1>
+          <h1 ref={heading} tabIndex={-1}>{isHome ? "Главное" : dashboardSections[section]}</h1>
           {isHome && (
             <p>
-              Кибердайджест за 24 часа. Запускайте обработку, сверяйте источники
-              и готовьте выпуск к публикации.
+              Загрузите публикации о кибербезопасности и получите дайджест со ссылками на источники.
             </p>
           )}
-          {isResult && <p>{run.period.label}</p>}
+          {isResult && run && !running && <p className="dash-issue-meta">{run.dataset} · {run.period}</p>}
         </div>
-        {!isHome && isResult && (
+        {isResult && run && !running && (
           <div className="dash-inline">
+            {section === "journal" && (
+              <button type="button" className="dash-button dash-button-primary" onClick={() => setDialog("article")}>
+                <Plus size={17} aria-hidden="true" /> Добавить публикацию
+              </button>
+            )}
+            {section === "email" && (
+              <button type="button" className="dash-button dash-button-primary" onClick={() => setDialog("send")}>
+                <PaperPlaneTilt size={16} aria-hidden="true" /> Проверить отправку
+              </button>
+            )}
             <button
               type="button"
               className="dash-button"
-              disabled={running}
-              onClick={() => setDialog("send")}
-            >
-              <PaperPlaneTilt size={16} /> Разослать (тест)
-            </button>
-            <button
-              type="button"
-              className="dash-button dash-button-primary"
-              disabled={running}
               onClick={() => setDialog("export")}
             >
-              <DownloadSimple size={17} /> Выгрузить
+              <DownloadSimple size={17} aria-hidden="true" /> Скачать материалы
             </button>
           </div>
         )}
       </div>
-      <PageHint>{pageHints[section]}</PageHint>
+      {section !== "guide" && showHint && (
+        <PageHint
+          key={section}
+          section={section}
+          baseHref={baseHref}
+          onDismiss={() => heading.current?.focus({ preventScroll: true })}
+        />
+      )}
+      {(isHome || isResult) && runError && (
+        <p className="dash-error" role="alert">
+          {runError}{run && " Ниже показан последний завершённый выпуск."}
+        </p>
+      )}
       {section === "setup" ? (
         <>
-          <QuickActions
-            baseHref={baseHref}
-            running={running}
-            onExport={() => setDialog("export")}
-          />
           <Launch {...workspace} />
-          <RunStatistics baseHref={baseHref} run={run} running={running} />
+          {run && (
+            <>
+              <LatestIssue baseHref={baseHref} run={run} running={running} onExport={() => setDialog("export")} />
+              <RunStatistics baseHref={baseHref} run={run} />
+            </>
+          )}
         </>
       ) : section === "guide" ? (
         <DashboardGuide baseHref={baseHref} />
       ) : section === "profile" ? (
         <Profile />
       ) : running ? (
-        <RunProgress stage={stage} running={running} />
+        <RunProgress status={status} />
+      ) : !run ? (
+        <section className="dash-panel dash-result-content dash-empty-actions">
+          <h2>Сначала соберите выпуск</h2>
+          <p>{runError
+            ? "Запустите обработку заново с учебным или своим набором."
+            : "Здесь появится результат обработки. Для первого запуска можно взять готовый учебный набор."}</p>
+          <div className="dash-inline">
+            <Link className="dash-button dash-button-primary" href={baseHref + "#run-settings"}>К форме запуска</Link>
+            <Link className="dash-button" href={baseHref + "/guide#first-run"}>Как запустить</Link>
+          </div>
+        </section>
       ) : (
         <section
           className="dash-panel dash-result-content"
-          aria-label="Результаты прогона"
+          aria-label="Результаты выпуска"
         >
-          <Result section={section} run={run} />
+          <Result section={section} run={run} baseHref={baseHref} />
         </section>
       )}
     </>
@@ -1046,7 +1117,7 @@ export function Dashboard({
   children: ReactNode;
 }) {
   const workspace = useWorkspace(baseHref);
-  const { dialog, setDialog, run, start, controlTime } = workspace;
+  const { dialog, setDialog, run, start } = workspace;
   const segment = useSelectedLayoutSegment();
 
   useEffect(() => {
@@ -1060,6 +1131,9 @@ export function Dashboard({
 
   function signOut() {
     saveDemoAccount(null);
+    try {
+      sessionStorage.removeItem(lastRunKey);
+    } catch {}
     window.location.replace(homeHref);
   }
 
@@ -1082,15 +1156,19 @@ export function Dashboard({
             >
               <SquaresFour size={18} aria-hidden="true" /> Главное
             </Link>
-            <p className="dash-side-label">Результаты</p>
-            {results.map(({ id, icon: Icon }) => (
-              <Link
-                href={baseHref + "/" + id}
-                key={id}
-                aria-current={segment === id ? "page" : undefined}
-              >
-                <Icon size={18} aria-hidden="true" /> {dashboardSections[id]}
-              </Link>
+            {resultGroups.map(({ label, items }) => (
+              <div className="dash-nav-group" role="group" aria-label={label} key={label}>
+                <p className="dash-side-label" aria-hidden="true">{label}</p>
+                {items.map(({ id, icon: Icon }) => (
+                  <Link
+                    href={baseHref + "/" + id}
+                    key={id}
+                    aria-current={segment === id ? "page" : undefined}
+                  >
+                    <Icon size={18} aria-hidden="true" /> {dashboardSections[id]}
+                  </Link>
+                ))}
+              </div>
             ))}
             <p className="dash-side-label">Сервис</p>
             <Link
@@ -1107,9 +1185,6 @@ export function Dashboard({
             </Link>
           </nav>
           <div className="dash-sidebar-end">
-            <span className="dash-sidebar-state">
-              <i /> Локальное демо
-            </span>
             <AccountActions onSignOut={signOut} />
           </div>
         </aside>
@@ -1124,41 +1199,28 @@ export function Dashboard({
                 {dashboardSections[segment as DashboardSection] ?? "Главное"}
               </strong>
             </div>
-            <span className="dash-demo">
-              <i /> Демо-режим
-            </span>
           </header>
           <div className="dash-content">{children}</div>
         </main>
 
-        {dialog === "export" && (
-          <Dialog title="Выгрузить материалы" onClose={() => setDialog(null)}>
+        {dialog === "export" && run && (
+          <Dialog title="Скачать материалы" onClose={() => setDialog(null)}>
             <p className="dash-dialog-note">
-              Файлы текущего демонстрационного выпуска.
+              Архив с дайджестом, постом, письмом, журналом и отчётом о прогоне.
             </p>
-            <div className="dash-export-list">
-              {getArtifacts(run).map((file) => (
-                <button
-                  type="button"
-                  className="dash-button"
-                  key={file.name}
-                  onClick={() => downloadFile(file)}
-                >
-                  <FileText size={16} /> {file.name}
-                  <DownloadSimple size={16} />
-                </button>
-              ))}
-            </div>
+            <a className="dash-button dash-button-primary" href={exportUrl(run.id)} download>
+              <DownloadSimple size={16} /> Скачать ZIP
+            </a>
           </Dialog>
         )}
-        {dialog === "send" && (
-          <Dialog title="Тестовая рассылка" onClose={() => setDialog(null)}>
-            <SendForm />
+        {dialog === "send" && run && (
+          <Dialog title="Проверка отправки" onClose={() => setDialog(null)}>
+            <SendForm runId={run.id} />
           </Dialog>
         )}
-        {dialog === "article" && (
+        {dialog === "article" && run && (
           <Dialog title="Добавить публикацию" onClose={() => setDialog(null)}>
-            <ArticleForm controlTime={controlTime} onSubmit={start} />
+            <ArticleForm run={run} onSubmit={start} />
           </Dialog>
         )}
       </div>
