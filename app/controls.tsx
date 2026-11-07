@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { localeNames, localePath, locales, type Locale } from "./locales";
-import { themeKey } from "./theme";
+import { toggleTheme } from "./theme";
 
 export function LanguagePicker({ locale, label }: { locale: Locale; label: string }) {
   const menu = useRef<HTMLDetailsElement>(null);
@@ -57,19 +57,8 @@ export function LanguagePicker({ locale, label }: { locale: Locale; label: strin
 }
 
 export function ThemeToggle({ label }: { label: string }) {
-  function toggleTheme() {
-    const root = document.documentElement;
-    const theme = root.dataset.theme === "dark" ? "light" : "dark";
-    root.dataset.theme = theme;
-    try {
-      localStorage.setItem(themeKey, theme);
-    } catch {
-      // The theme still applies when browser storage is unavailable.
-    }
-  }
-
   return (
-    <button className="control theme-toggle" type="button" onClick={toggleTheme} aria-label={label} title={label}>
+    <button className="control theme-toggle" type="button" onClick={() => toggleTheme()} aria-label={label} title={label}>
       <svg className="theme-moon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M20.9 13.35A9 9 0 0 1 10.65 3.1 9 9 0 1 0 20.9 13.35Z" />
       </svg>

@@ -6,9 +6,10 @@ import { createContext, useContext, useEffect, useRef, useState, type FormEvent,
 import {
   Article, ArrowClockwise, ArrowRight, ArrowSquareOut, CaretDown, CaretRight, Check, Clock,
   CloudArrowUp, Copy, DotsThree, DownloadSimple, EnvelopeSimple, FileText, ListChecks,
-  MagnifyingGlass, PaperPlaneTilt, Play, Plus, ShieldCheck, SignOut, SquaresFour, UserCircle, X,
+  MagnifyingGlass, Moon, PaperPlaneTilt, Play, Plus, ShieldCheck, SignOut, SquaresFour, Sun, UserCircle, X,
 } from "@phosphor-icons/react";
 import { readDemoAccount, saveDemoAccount } from "../../demo-account";
+import { toggleTheme } from "../../theme";
 import {
   createDemoRun, demoControlTime, demoDataset, demoRecipient, exampleArticles, getArtifacts,
   getPeriod, getRunReport, issueNote, maxEvents, renderPost,
@@ -317,7 +318,15 @@ function AccountActions({ onSignOut }: { onSignOut: () => void }) {
     }}>
       <summary className="dash-button" ref={trigger}><DotsThree size={18} weight="bold" aria-hidden="true" /> Действия <CaretDown size={13} aria-hidden="true" /></summary>
       <div className="dash-actions-popover">
-        <button type="button" onClick={onSignOut}><SignOut size={17} aria-hidden="true" /> Выйти</button>
+        <button type="button" onClick={() => {
+          toggleTheme("dark");
+          menu.current?.removeAttribute("open");
+          trigger.current?.focus();
+        }}>
+          <span className="dash-to-light"><Sun size={17} aria-hidden="true" /> Светлая тема</span>
+          <span className="dash-to-dark"><Moon size={17} aria-hidden="true" /> Тёмная тема</span>
+        </button>
+        <button className="dash-sign-out" type="button" onClick={onSignOut}><SignOut size={17} aria-hidden="true" /> Выйти</button>
       </div>
     </details>
   );
