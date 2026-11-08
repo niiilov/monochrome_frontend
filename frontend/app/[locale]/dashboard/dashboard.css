@@ -221,7 +221,19 @@
 .dash-progress progress { display: block; width: 100%; height: 5px; margin-block: 11px 10px; overflow: hidden; border: 0; border-radius: 9px; background: light-dark(#ebe3d4, #34312a); accent-color: var(--accent); }
 .dash-progress progress::-webkit-progress-bar { background: light-dark(#ebe3d4, #34312a); }
 .dash-progress progress::-webkit-progress-value { background: var(--accent); }
-.dash-progress ol { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.dash-progress ol {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  block-size: 134px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  padding: 0 4px 0 0;
+  margin: 0;
+  list-style: none;
+}
 .dash-progress li { display: grid; grid-template-columns: 19px minmax(0, 1fr) max-content; align-items: center; gap: 8px; min-height: 22px; font-size: 12px; }
 .dash-stage-mark { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: light-dark(#e9e3d7, #302e29); color: var(--dash-muted); font-size: 10px; }
 .dash-progress li[data-stage="done"] .dash-stage-mark { background: light-dark(#e7f3e8, #2b352a); color: var(--dash-green); }

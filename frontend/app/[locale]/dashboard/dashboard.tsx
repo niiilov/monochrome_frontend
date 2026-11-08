@@ -6,6 +6,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -146,8 +147,16 @@ function Dialog({
 }
 
 function RunProgress({ status }: { status: RunStatus | null }) {
+  const stageList = useRef<HTMLOListElement>(null);
+  const followLatest = useRef(true);
   const stages = status?.stages ?? [];
   const current = stages.at(-1);
+
+  useLayoutEffect(() => {
+    const list = stageList.current;
+    if (list && followLatest.current) list.scrollTop = list.scrollHeight;
+  }, [stages.length, current?.name]);
+
   return (
     <section className="dash-panel dash-progress" aria-labelledby="dash-progress-title">
       <div className="dash-panel-head">
@@ -160,7 +169,15 @@ function RunProgress({ status }: { status: RunStatus | null }) {
         max={status?.status === "done" ? 1 : current?.total || 1}
         aria-label="Ход текущего этапа"
       />
-      <ol>
+      <ol
+        ref={stageList}
+        tabIndex={0}
+        aria-label="Этапы обработки"
+        onScroll={(event) => {
+          const { scrollHeight, clientHeight, scrollTop } = event.currentTarget;
+          followLatest.current = scrollHeight - clientHeight - scrollTop <= 2;
+        }}
+      >
         {stages.map(({ name, done, total }, index) => {
           const finished = index < stages.length - 1 || status?.status === "done" || (total > 0 && done >= total);
           return (
