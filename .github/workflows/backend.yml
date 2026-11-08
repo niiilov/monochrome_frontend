@@ -49,7 +49,12 @@ jobs:
           for attempt in {1..15}; do
             response=$(curl --fail --silent --show-error "http://127.0.0.1:8080/api/v1/runs/$run_id")
             case "$(jq -er '.status' <<< "$response")" in
-              done) exit 0 ;;
+              done)
+                curl --fail --silent --show-error -H 'Accept: application/json' \
+                  "http://127.0.0.1:8080/api/v1/runs/$run_id/digest" |
+                  jq -e '(.events // []) | length > 0'
+                exit 0
+                ;;
               failed) printf '%s\n' "$response"; exit 1 ;;
             esac
             sleep 1

@@ -69,7 +69,7 @@ func offlineText(task, prompt string) (string, error) {
 }
 
 func classifyReply(prompt string) map[string]any {
-	low := strings.ToLower(prompt)
+	low := strings.ToLower(articleContent(prompt))
 	ad := strings.Contains(low, "скидк") ||
 		strings.Contains(low, "вебинар") ||
 		strings.Contains(low, "промокод") ||
@@ -123,9 +123,7 @@ func scoreReply() map[string]any {
 	}
 }
 
-// articleSnippet returns a short slice of the article text inside the prompt.
-// The slice stays inside one field (title or body) so the quote checker can find it.
-func articleSnippet(prompt string) string {
+func articleContent(prompt string) string {
 	const open = "<article id=\""
 	i := strings.LastIndex(prompt, open)
 	if i < 0 {
@@ -137,11 +135,16 @@ func articleSnippet(prompt string) string {
 		return ""
 	}
 	body := rest[gt+2:]
-	if end := strings.Index(body, "</article>"); end >= 0 {
-		body = body[:end]
+	end := strings.Index(body, "</article>")
+	if end < 0 {
+		return ""
 	}
-	body = html.UnescapeString(body)
-	body = strings.TrimSpace(body)
+	return strings.TrimSpace(html.UnescapeString(body[:end]))
+}
+
+// articleSnippet stays inside one field (title or body) so the quote checker can find it.
+func articleSnippet(prompt string) string {
+	body := articleContent(prompt)
 	if nl := strings.IndexByte(body, '\n'); nl >= 0 {
 		tail := strings.TrimSpace(body[nl+1:])
 		if tail != "" {

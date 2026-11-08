@@ -403,7 +403,7 @@ function RunReport({ run }: { run: DigestRun }) {
         </div>
         <div>
           <dt>Событий в выпуске</dt>
-          <dd>{report.counts.events}</dd>
+          <dd>{run.events.length}</dd>
         </div>
         <div>
           <dt>Время обработки</dt>
