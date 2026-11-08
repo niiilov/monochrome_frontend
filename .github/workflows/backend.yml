@@ -1,0 +1,58 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [fullstack]
+    paths: [backend/**, .github/workflows/backend.yml]
+  pull_request:
+    paths: [backend/**, .github/workflows/backend.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Check and build Go
+        run: make ci
+
+  image:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t mono:ci ./backend
+
+      - name: Check the dashboard's sample dataset in the container
+        run: |
+          docker run --rm --detach --name mono-ci -p 127.0.0.1:8080:8080 mono:ci --mock
+          trap 'docker rm -f mono-ci >/dev/null 2>&1 || true' EXIT
+          curl --fail --silent --show-error --retry 8 --retry-connrefused http://127.0.0.1:8080/api/v1/healthz
+          response=$(curl --fail --silent --show-error \
+            -F 'dataset=testdata/train/publications.json' \
+            -F 'control_time=2026-11-07T12:00:00+03:00' \
+            http://127.0.0.1:8080/api/v1/runs)
+          run_id=$(jq -er '.run_id' <<< "$response")
+          for attempt in {1..15}; do
+            response=$(curl --fail --silent --show-error "http://127.0.0.1:8080/api/v1/runs/$run_id")
+            case "$(jq -er '.status' <<< "$response")" in
+              done) exit 0 ;;
+              failed) printf '%s\n' "$response"; exit 1 ;;
+            esac
+            sleep 1
+          done
+          printf '%s\n' "$response"
+          exit 1

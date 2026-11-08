@@ -52,9 +52,15 @@ LLM_PROXY= LLM_PROXY_FILE= ./scripts/control_run.sh testdata/train/publications.
 ## Инструменты
 
 - Go 1.22+ (в среде разработки может быть новее)
-- `make` (build, test, vet, check)
+- `make` (build, test, vet, check, ci)
 - Python 3 для `tools/check_mono.py`
 - Опционально: Docker, gitleaks (`scripts/check_secrets.sh`)
+
+## CI/CD
+
+В ветке `fullstack` GitHub Actions проверяет Go-код и собирает Docker-образ из `backend/`. Затем запускает контейнер и проверяет сборку учебного выпуска. Проверки Go можно запустить из `backend/` командой `make ci`.
+
+Исходный репозиторий [niiilov/cyber-digest](https://github.com/niiilov/cyber-digest) публикует свой образ в GHCR. Для работы с дашбордом MONO соберите образ из этой ветки по [инструкции запуска](../README.md#бэкенд-в-docker).
 
 ## Структура
 
