@@ -1,0 +1,43 @@
+name: mono-digital
+
+x-runtime: &runtime
+  init: true
+  restart: unless-stopped
+  cpus: 1.0
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  backend:
+    <<: *runtime
+    build: ./backend
+    command: ["--mock"]
+    environment:
+      MONO_ADDR: ":8080"
+      ALLOWED_TEST_RECIPIENTS: test@example.com
+    volumes:
+      - runs:/app/runs
+    mem_limit: 384m
+
+  frontend:
+    <<: *runtime
+    build: ./frontend
+    depends_on:
+      - backend
+    environment:
+      DIGEST_API_URL: http://backend:8080
+    ports:
+      - "${MONO_BIND_IP:-127.0.0.1}:${MONO_PORT:-13107}:3000"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/', {signal: AbortSignal.timeout(4000)}).then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  runs:
