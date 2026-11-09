@@ -74,10 +74,10 @@ type NavLink = { label: string; href: string };
 export type NavGroup = { label: string; links: NavLink[] };
 
 export function SiteHeader({
-  brand, locale, language, theme, navigation, menuLabel, groups, login,
+  brand, locale, language, theme, navigation, menuLabel, groups, login, signIn,
 }: {
   brand: ReactNode; locale: Locale; language: string; theme: string;
-  navigation: string; menuLabel: string; groups: NavGroup[]; login: NavLink;
+  navigation: string; menuLabel: string; groups: NavGroup[]; login: NavLink; signIn: NavLink;
 }) {
   const header = useRef<HTMLElement>(null);
   const mobile = useRef<HTMLButtonElement>(null);
@@ -152,6 +152,7 @@ export function SiteHeader({
         <div className="header-actions">
           <LanguagePicker locale={locale} label={language} />
           <ThemeToggle label={theme} />
+          <a className="header-sign-in" href={signIn.href} onClick={close}>{signIn.label}</a>
           <a className="header-login" href={login.href} onClick={close}>
             {login.label}<span aria-hidden="true">↗</span>
           </a>

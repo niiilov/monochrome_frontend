@@ -1,0 +1,57 @@
+.sources { display: grid; gap: 16px; }
+.sources > .dash-panel { padding: clamp(14px, 2.5vw, 23px); }
+.sources .dash-panel-head { align-items: center; gap: 12px; margin-block-end: 17px; }
+.sources .dash-panel-head h2 { display: flex; align-items: center; gap: 9px; }
+.sources .dash-panel-head h2 > svg { color: var(--dash-gold); }
+.sources-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: end; }
+.sources-form label, .sources-kind, .sources-field { display: grid; align-content: start; min-width: 0; gap: 8px; color: var(--dash-text); font-size: 12px; font-weight: 700; }
+.sources-field-label { position: relative; display: flex; align-items: center; gap: 4px; min-height: 24px; }
+.sources-field-help { display: inline-flex; align-self: stretch; }
+.sources-field-help button { display: grid; place-items: center; min-width: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--dash-muted); }
+.sources-field-help button:hover, .sources-field-help button:focus-visible { color: var(--dash-gold); }
+.sources-tooltip {
+  position: absolute;
+  z-index: 6;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  width: min(320px, 100%);
+  padding: 8px 12px;
+  border: 1px solid var(--dash-edge);
+  border-radius: 8px;
+  background: light-dark(#fffdf8, #252422);
+  color: var(--dash-text);
+  box-shadow: 0 6px 18px #0002;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.sources-form .dash-input { width: 100%; min-height: 42px; }
+.sources-url { grid-column: 1 / -1; }
+.sources-form .sources-check { grid-template-columns: 16px minmax(0, 1fr); align-self: start; gap: 8px; min-height: 42px; }
+.sources-check input { width: 16px; height: 16px; margin: 2px 0 0; }
+.sources-check small { display: block; margin-block-start: 4px; color: var(--dash-muted); font-size: 12px; font-weight: 400; line-height: 1.5; }
+.sources-actions { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; }
+.sources-heading { flex-wrap: wrap; }
+.sources-total { padding: 3px 8px; border: 1px solid var(--dash-edge); border-radius: 6px; color: var(--dash-muted); font-size: 12px; font-weight: 650; }
+.sources-saved { color: var(--dash-muted); font-size: 11px; }
+.sources-table-wrap { overflow-x: auto; }
+.sources-table { width: 100%; border-collapse: collapse; text-align: start; }
+.sources-table th { padding: 11px 12px; border-block-end: 1px solid var(--dash-edge); color: var(--dash-muted); font-size: 11px; font-weight: 650; text-align: start; }
+.sources-table td { padding: 12px; border-block-end: 1px solid var(--dash-edge); vertical-align: top; }
+.sources-table tbody tr:last-child td { border-block-end: 0; }
+.sources-table th:first-child, .sources-table td:first-child { padding-inline-start: 0; }
+.sources-table td strong, .sources-table td a { display: block; }
+.sources-table td a { margin-block-start: 4px; color: var(--dash-gold); font-size: 12px; overflow-wrap: anywhere; }
+.sources-toggle { min-height: 34px; padding: 6px 10px; border: 1px solid var(--dash-edge); border-radius: 8px; background: transparent; color: var(--dash-muted); font-size: 12px; font-weight: 700; }
+.sources-toggle[aria-pressed="true"] { border-color: #f5e392; background: var(--accent); color: var(--accent-ink); }
+.sources-row-actions { display: flex; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+.sources-remove { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--dash-muted); }
+.sources-remove:hover { border-color: light-dark(#e7bfb5, #70463d); background: light-dark(#fae8e1, #382922); color: light-dark(#96382b, #ffb5a5); }
+.sources-empty { display: grid; justify-items: center; gap: 12px; padding: 36px 16px; text-align: center; color: var(--dash-muted); }
+.sources-empty > svg { color: var(--dash-gold); }
+.sources-notice { min-height: 1.2em; margin: 12px 0 0; color: var(--dash-muted); font-size: 12px; }
+.sources-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 720px) {
+  .sources-form { grid-template-columns: 1fr; }
+}

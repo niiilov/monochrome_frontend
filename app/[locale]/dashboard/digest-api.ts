@@ -3,6 +3,22 @@ export const sampleControlTime = "2026-11-07T12:00";
 export const maxEvents = 5;
 export const uploadLimit = 8 * 1024 * 1024;
 export const lastRunKey = "mono-digest-last-run";
+export const pendingRunKey = "mono-digest-pending-run";
+
+export function readRunId(key: string) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function storeRunId(key: string, id: string | null) {
+  try {
+    if (id === null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, id);
+  } catch {}
+}
 
 export type Status = "включён" | "объединён" | "исключён";
 export type ArticleDraft = {
@@ -78,15 +94,29 @@ export function getPeriod(controlTime: string) {
 }
 
 export function formatMoscowInput(value: string) {
+  return moscowDateParts(new Date(value));
+}
+
+export function moscowNowInput() {
+  return moscowDateParts(new Date());
+}
+
+function moscowDateParts(value: Date) {
   const parts = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Europe/Moscow", year: "numeric", month: "2-digit",
     day: "2-digit", hour: "2-digit", minute: "2-digit",
-  }).format(new Date(value));
+  }).format(value);
   return parts.replace(" ", "T");
 }
 
 const base = "/api/digest/";
 const runPath = (id: string) => base + encodeURIComponent(id);
+
+class DigestApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
 
 export function exportUrl(id: string) {
   return runPath(id) + "/export";
@@ -96,7 +126,7 @@ async function request(url: string, init?: RequestInit) {
   const response = await fetch(url, init);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error || "Ошибка сервера (" + response.status + ").");
+    throw new DigestApiError(body?.error || "Ошибка сервера (" + response.status + ").", response.status);
   }
   return response;
 }
@@ -115,10 +145,11 @@ async function post<T>(url: string, body: FormData | object, signal?: AbortSigna
   return response.json() as Promise<T>;
 }
 
-export function createRun(controlTime: string, file: File | null, signal: AbortSignal) {
+export function createRun(controlTime: string, file: File | null, signal: AbortSignal, live = false) {
   const form = new FormData();
   form.set("control_time", controlTime + ":00+03:00");
-  if (file) form.set("file", file);
+  if (live) form.set("live", "true");
+  else if (file) form.set("file", file);
   return post<{ run_id: string }>(base + "runs", form, signal);
 }
 
@@ -131,6 +162,39 @@ export function addArticle(id: string, article: ArticleDraft, signal: AbortSigna
 
 export function getRunStatus(id: string, signal: AbortSignal) {
   return json<RunStatus>(runPath(id), signal);
+}
+
+export async function finishPendingRun(
+  id: string,
+  signal: AbortSignal,
+  onStatus: (status: RunStatus) => void,
+) {
+  let current: RunStatus;
+  try {
+    current = await getRunStatus(id, signal);
+    while (current.status === "running") {
+      onStatus(current);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      signal.throwIfAborted();
+      current = await getRunStatus(id, signal);
+    }
+  } catch (error) {
+    if (!signal.aborted && error instanceof DigestApiError && error.status === 404) {
+      storeRunId(pendingRunKey, null);
+    }
+    throw error;
+  }
+  signal.throwIfAborted();
+  if (current.status === "failed") {
+    storeRunId(pendingRunKey, null);
+    throw new Error(current.error || "Выпуск не удалось собрать.");
+  }
+  onStatus(current);
+  const result = await loadRun(current, signal);
+  signal.throwIfAborted();
+  storeRunId(lastRunKey, result.id);
+  storeRunId(pendingRunKey, null);
+  return result;
 }
 
 export function checkSend(id: string, recipients: string[]) {

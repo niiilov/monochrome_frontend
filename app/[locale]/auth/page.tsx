@@ -3,14 +3,15 @@ import { AuthForm } from "../../auth-form";
 import { HeroMotion } from "../../hero-motion";
 import { isLocale, localePath } from "../../locales";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ mode?: string | string[] }> };
 
 export const metadata = { title: "MONO · Вход и регистрация" };
 
-export default async function AuthPage({ params }: Props) {
+export default async function AuthPage({ params, searchParams }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const backHref = localePath(locale);
+  const initialSignIn = (await searchParams).mode === "signin";
 
   return (
     <main className="auth-page" lang="ru" dir="ltr">
@@ -24,7 +25,7 @@ export default async function AuthPage({ params }: Props) {
           <p className="auth-intro-title">Ваш аккаунт в MONO</p>
           <p>Создайте аккаунт или войдите, чтобы продолжить.</p>
         </div>
-        <AuthForm dashboardHref={`/${locale}/dashboard`} />
+        <AuthForm dashboardHref={`/${locale}/dashboard`} initialSignIn={initialSignIn} />
       </section>
     </main>
   );

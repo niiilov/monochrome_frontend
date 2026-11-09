@@ -6,13 +6,17 @@ export const dashboardSections = {
   report: "Отчёт",
   guide: "Инструкция",
   profile: "Профиль",
+  mailing: "Рассылка",
+  sources: "Источники",
 } as const;
 
 export type DashboardSection = keyof typeof dashboardSections;
 
 export type HintSection = Exclude<DashboardSection, "guide"> | "setup";
 
-export const pageHints = {
+type HintCopy = { text: string; title?: string; anchor?: string };
+
+export const pageHints: Record<HintSection, HintCopy> = {
   setup: {
     text: "Для первого запуска ничего загружать не нужно. Учебный набор уже выбран. Нажмите «Собрать дайджест», затем откройте последний выпуск.",
     anchor: "first-run",
@@ -26,7 +30,7 @@ export const pageHints = {
     anchor: "read-results",
   },
   email: {
-    text: "Здесь можно сверить тему и содержание письма. «Проверить отправку» проверяет тестовый адрес без доставки.",
+    text: "Здесь можно сверить тему и содержание письма. «Отправить дайджест» отправляет письмо всем или выбранным получателям.",
     anchor: "share",
   },
   journal: {
@@ -38,7 +42,16 @@ export const pageHints = {
     anchor: "read-results",
   },
   profile: {
-    text: "Здесь можно изменить имя и почту демопрофиля в этой вкладке. Адрес для тестовой рассылки вводится отдельно в разделе «Письмо».",
+    text: "Здесь можно изменить имя аккаунта и посмотреть подтверждённый адрес почты. Получатели рассылки настраиваются в разделе «Рассылка».",
     anchor: "share",
   },
-} satisfies Record<HintSection, { text: string; anchor: string }>;
+  mailing: {
+    title: "Как использовать статусы",
+    text: "«Отправлять» — адрес доступен для рассылки. «Не отправлять» — адрес исключён. При отправке готового выпуска можно выбрать всех доступных получателей или отдельные адреса.",
+    anchor: "share",
+  },
+  sources: {
+    title: "Как добавить источник",
+    text: "Укажите название, выберите тип и вставьте адрес ленты, страницы новостей или API. Для RSS-ленты обычно достаточно названия и ссылки. Нажмите «Добавить», чтобы сохранить источник.",
+  },
+};

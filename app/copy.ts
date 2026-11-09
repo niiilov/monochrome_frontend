@@ -8,6 +8,7 @@ export type Copy = {
   theme: string;
   navigation: string;
   tryProduct: string;
+  signIn: string;
   skip: string;
   overview: string;
   formats: string;
@@ -31,6 +32,7 @@ export type Copy = {
 export const copy: Record<Locale, Copy> = {
   ru: {
     tryProduct: "Попробовать",
+    signIn: "Войти",
     stage: "Этап",
     language: "Язык", theme: "Переключить тему", navigation: "Навигация", skip: "Перейти к содержанию",
     overview: "Как работает", formats: "Форматы", questions: "Вопросы",
@@ -65,6 +67,7 @@ export const copy: Record<Locale, Copy> = {
   },
   en: {
     tryProduct: "Try it",
+    signIn: "Log in",
     stage: "Step",
     language: "Language", theme: "Switch theme", navigation: "Navigation", skip: "Skip to content",
     overview: "How it works", formats: "Formats", questions: "FAQ",
@@ -99,6 +102,7 @@ export const copy: Record<Locale, Copy> = {
   },
   de: {
     tryProduct: "Ausprobieren",
+    signIn: "Anmelden",
     stage: "Schritt",
     language: "Sprache", theme: "Design wechseln", navigation: "Navigation", skip: "Zum Inhalt springen",
     overview: "Ablauf", formats: "Formate", questions: "Fragen",
@@ -133,6 +137,7 @@ export const copy: Record<Locale, Copy> = {
   },
   fr: {
     tryProduct: "Essayer",
+    signIn: "Se connecter",
     stage: "Étape",
     language: "Langue", theme: "Changer de thème", navigation: "Navigation", skip: "Aller au contenu",
     overview: "Fonctionnement", formats: "Formats", questions: "Questions",
@@ -167,6 +172,7 @@ export const copy: Record<Locale, Copy> = {
   },
   es: {
     tryProduct: "Probar",
+    signIn: "Iniciar sesión",
     stage: "Paso",
     language: "Idioma", theme: "Cambiar tema", navigation: "Navegación", skip: "Saltar al contenido",
     overview: "Cómo funciona", formats: "Formatos", questions: "Preguntas",
@@ -201,6 +207,7 @@ export const copy: Record<Locale, Copy> = {
   },
   it: {
     tryProduct: "Prova",
+    signIn: "Accedi",
     stage: "Fase",
     language: "Lingua", theme: "Cambia tema", navigation: "Navigazione", skip: "Vai al contenuto",
     overview: "Come funziona", formats: "Formati", questions: "Domande",
@@ -235,6 +242,7 @@ export const copy: Record<Locale, Copy> = {
   },
   pt: {
     tryProduct: "Experimentar",
+    signIn: "Entrar",
     stage: "Etapa",
     language: "Idioma", theme: "Mudar tema", navigation: "Navegação", skip: "Ir para o conteúdo",
     overview: "Como funciona", formats: "Formatos", questions: "Perguntas",
@@ -269,6 +277,7 @@ export const copy: Record<Locale, Copy> = {
   },
   tr: {
     tryProduct: "Dene",
+    signIn: "Giriş yap",
     stage: "Adım",
     language: "Dil", theme: "Temayı değiştir", navigation: "Gezinme", skip: "İçeriğe geç",
     overview: "Nasıl çalışır", formats: "Biçimler", questions: "Sorular",
@@ -303,6 +312,7 @@ export const copy: Record<Locale, Copy> = {
   },
   ar: {
     tryProduct: "جرّب",
+    signIn: "تسجيل الدخول",
     stage: "المرحلة",
     language: "اللغة", theme: "تبديل المظهر", navigation: "التنقّل", skip: "الانتقال إلى المحتوى",
     overview: "كيف يعمل", formats: "المخرجات", questions: "الأسئلة",
@@ -337,6 +347,7 @@ export const copy: Record<Locale, Copy> = {
   },
   zh: {
     tryProduct: "试用",
+    signIn: "登录",
     stage: "步骤",
     language: "语言", theme: "切换主题", navigation: "导航", skip: "跳转到正文",
     overview: "工作流程", formats: "输出格式", questions: "常见问题",
@@ -371,6 +382,7 @@ export const copy: Record<Locale, Copy> = {
   },
   ja: {
     tryProduct: "試す",
+    signIn: "ログイン",
     stage: "ステップ",
     language: "言語", theme: "テーマを切り替える", navigation: "ナビゲーション", skip: "本文へ移動",
     overview: "仕組み", formats: "出力形式", questions: "よくある質問",

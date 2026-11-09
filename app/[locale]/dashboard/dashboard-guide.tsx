@@ -36,8 +36,9 @@ export function PageHint({ section, baseHref, onDismiss }: {
     <aside className="dash-hint" aria-label="Подсказка к странице">
       <Info size={18} weight="bold" aria-hidden="true" />
       <div>
+        {hint.title && <strong>{hint.title}</strong>}
         <p>{hint.text}</p>
-        <Link href={baseHref + "/guide#" + hint.anchor}>Подробнее в инструкции</Link>
+        {hint.anchor && <Link href={baseHref + "/guide#" + hint.anchor}>Подробнее в инструкции</Link>}
       </div>
       <button type="button" onClick={dismiss} aria-label="Закрыть подсказку">
         <X size={17} aria-hidden="true" />
@@ -151,7 +152,7 @@ export function DashboardGuide({ baseHref }: { baseHref: string }) {
       <section className="dash-panel dash-guide-intro" id="share">
         <h2>Заберите файлы или проверьте письмо</h2>
         <p>На любой странице готового выпуска нажмите «Скачать материалы», затем «Скачать ZIP». В архиве будут дайджест, короткий пост, письмо, журнал и отчёт.</p>
-        <p>Чтобы проверить адрес получателя, откройте «Письмо» и нажмите «Проверить отправку». Введите адрес, разрешённый в настройках сервера. Для локальной демонстрации это <code>test@example.com</code>. После проверки появится результат. Письмо при этом не доставляется.</p>
+        <p>Добавьте получателей в разделе «Рассылка» и назначьте им статус «Отправлять». Затем откройте готовое «Письмо» и нажмите «Отправить дайджест». Можно отправить всем или выбранным адресам. Для проверки без доставки включите соответствующий флажок.</p>
         <Link className="dash-guide-link" href={baseHref + "/email"}>К предпросмотру письма <ArrowRight size={14} aria-hidden="true" /></Link>
       </section>
       <div className="dash-inline">

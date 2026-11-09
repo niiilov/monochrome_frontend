@@ -171,7 +171,7 @@ h3 { font-weight: 600; }
 }
 .top-nav, .header-actions { display: flex; align-items: center; gap: 2px; }
 .header-actions { margin-inline-start: auto; gap: 12px; flex: none; }
-.nav-group > button, .header-login {
+.nav-group > button, .header-login, .header-sign-in {
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -183,6 +183,8 @@ h3 { font-weight: 600; }
 .nav-group > button:hover, .nav-group > button[aria-expanded="true"] { background: var(--landing-tile); }
 .chevron { display: inline-block; width: 6px; height: 6px; flex: none; border: solid currentColor; border-width: 0 1px 1px 0; transform: translateY(-2px) rotate(45deg); }
 .header-login { color: var(--landing-gold); }
+.header-sign-in { min-height: 36px; padding-inline: 8px; border-radius: 8px; white-space: nowrap; }
+.header-sign-in:hover { background: var(--landing-tile); }
 .header-login span, .industry-arrow {
   display: grid;
   place-items: center;
@@ -684,12 +686,15 @@ h3 { font-weight: 600; }
   .auth-code { gap: 4px; }
 }
 @media (max-width: 460px) {
+  .header, .header.scrolled { gap: 6px; padding-inline: 4%; }
   .header-wordmark { width: 102px; }
-  .header-login { padding: 6px 10px; font-size: 11px; line-height: 1.2; }
-  .header-actions { gap: 7px; }
+  .header-sign-in { min-width: 0; padding-inline: 4px; font-size: 11px; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; }
+  .header-login { min-width: 0; padding: 6px 10px; font-size: 11px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+  .header-actions { flex: 0 1 auto; min-width: 0; gap: 4px; }
+  .header-actions .control { padding-inline: 5px; }
+  .hamburger { flex: none; }
 }
 @media (max-width: 380px) {
-  .header, .header.scrolled { gap: 6px; padding-inline: 4%; }
   .header-wordmark { width: clamp(70px, calc(100vw - 250px), 86px); }
   .header-login { padding-inline: 6px; text-transform: none; }
   .header-actions { gap: 2px; }

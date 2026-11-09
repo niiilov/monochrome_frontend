@@ -1,0 +1,46 @@
+.mailing { display: grid; gap: 16px; }
+.mailing > .dash-panel { padding: clamp(14px, 2.5vw, 23px); }
+.mailing .dash-panel-head { align-items: center; gap: 12px; margin-block-end: 17px; }
+.mailing .dash-panel-head h2 { display: flex; align-items: center; gap: 9px; }
+.mailing .dash-panel-head h2 > svg { color: var(--dash-gold); }
+.mailing-form { display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(205px, 1fr) auto; gap: 14px; align-items: end; }
+.mailing-form label { display: grid; align-content: start; min-width: 0; gap: 8px; color: var(--dash-text); font-size: 12px; font-weight: 700; }
+.mailing .dash-input { width: 100%; min-height: 42px; }
+.mailing-form > button { min-height: 42px; }
+.mailing-heading { flex-wrap: wrap; gap: 12px; }
+.mailing-total { padding: 3px 8px; border: 1px solid var(--dash-edge); border-radius: 6px; color: var(--dash-muted); font-size: 12px; font-weight: 650; }
+.mailing-saved { color: var(--dash-muted); font-size: 11px; }
+.mailing-bulk { margin-block: 12px 16px; }
+.mailing-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--dash-muted); }
+.mailing [data-mode="selected"] > .mailing-dot { background: var(--dash-gold); }
+.mailing [data-mode="all"] > .mailing-dot { background: var(--dash-green); }
+.mailing-tools { display: flex; flex-wrap: wrap; gap: 12px; margin-block-end: 16px; }
+.mailing-search { position: relative; flex: 1 1 200px; }
+.mailing-search > svg { position: absolute; inset-inline-start: 12px; top: 13px; color: var(--dash-muted); pointer-events: none; }
+.mailing-search .dash-input { padding-inline-start: 38px; }
+.mailing-tools > .dash-select { flex: 0 1 235px; }
+.mailing-table-wrap { overflow-x: auto; }
+.mailing-table { width: 100%; border-collapse: collapse; text-align: start; }
+.mailing-table th { padding: 11px 12px; border-block-end: 1px solid var(--dash-edge); color: var(--dash-muted); font-size: 11px; font-weight: 650; text-align: start; }
+.mailing-table td { padding: 12px; border-block-end: 1px solid var(--dash-edge); }
+.mailing-table tbody tr:last-child td { border-block-end: 0; }
+.mailing-table th:first-child, .mailing-table td:first-child { padding-inline-start: 0; }
+.mailing-table td:last-child { width: 44px; padding-inline-end: 0; text-align: end; }
+.mailing-address { display: flex; align-items: center; gap: 10px; min-width: 170px; }
+.mailing-address > svg { color: var(--dash-muted); }
+.mailing-address > span { overflow-wrap: anywhere; }
+.mailing-mode { display: flex; align-items: center; gap: 10px; min-width: 225px; }
+.mailing-mode .dash-select { flex: 1; }
+.mailing-mode .dash-input { min-height: 38px; font-size: 12px; }
+.mailing-remove { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--dash-muted); }
+.mailing-remove:hover { border-color: light-dark(#e7bfb5, #70463d); background: light-dark(#fae8e1, #382922); color: light-dark(#96382b, #ffb5a5); }
+.mailing-empty { display: grid; justify-items: center; gap: 12px; padding: 36px 16px; text-align: center; color: var(--dash-muted); }
+.mailing-empty > svg { color: var(--dash-gold); }
+.mailing-empty h3 { color: var(--dash-text); font-size: 16px; }
+.mailing-empty p { max-width: 390px; font-size: 13px; line-height: 1.6; }
+.mailing-notice { margin: 0; color: var(--dash-green); font-size: 12px; }
+.mailing-notice:not(:empty) { margin-block-start: 12px; }
+.mailing-help { max-width: 980px; padding: 2px 2px 0; color: var(--dash-muted); font-size: 12px; line-height: 1.7; }
+.mailing-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 1100px) { .mailing-form { grid-template-columns: 1fr 1fr; } .mailing-form > button { grid-column: 1 / -1; justify-self: start; } }
+@media (max-width: 640px) { .mailing-form { grid-template-columns: 1fr; } .mailing-form > button { width: 100%; } .mailing-tools > .dash-select { flex: 1 1 100%; } .mailing-table td { padding: 10px 8px; } }

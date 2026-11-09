@@ -77,7 +77,8 @@ export default async function Landing({ params }: Props) {
       <a href="#main" className="skip-link">{text.skip}</a>
       <SiteHeader brand={<a className="header-wordmark" href="#top" aria-label="MONO" />} locale={locale} language={text.language} theme={text.theme} navigation={text.navigation}
         menuLabel={menu} groups={groups}
-        login={{ href: `/${locale}/auth`, label: text.tryProduct }} />
+        login={{ href: `/${locale}/auth`, label: text.tryProduct }}
+        signIn={{ href: `/${locale}/auth?mode=signin`, label: text.signIn }} />
 
       <main id="main" tabIndex={-1}>
         <section className="hero" id="top" aria-labelledby="hero-title">
@@ -149,7 +150,7 @@ export default async function Landing({ params }: Props) {
               <Brand />
               <h2 id="guide-title">{sections.guide[0]}</h2>
               <p>{sections.guide[1]}</p>
-              <Pill href="#formats">{text.formats}</Pill>
+              <Pill href={`/${locale}/auth`}>{text.tryProduct}</Pill>
             </div>
             <GuideArt />
           </div>
